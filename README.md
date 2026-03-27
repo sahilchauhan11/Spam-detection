@@ -1,10 +1,10 @@
-# Email Spam Detection Web App
+📩 Email Spam Detection Web App
 
 A **machine learning-based web application** to detect whether an email is **Spam** or **Not Spam**. This project uses NLP for text preprocessing and a **Multinomial Naive Bayes classifier** to classify emails. The app is built with **Flask** and is deployed  on platform  **Render** .
 
 ---
 
-## Features
+🚀 Features
 
 - **Clean & preprocessed text** using NLTK: tokenization, stopword removal, and stemming.
 - **Machine learning model** to classify emails as Spam or Not Spam.
@@ -14,16 +14,15 @@ A **machine learning-based web application** to detect whether an email is **Spa
 
 ---
 
-## Project Structure
-
+📂 Project Structure
 Spam-detection/
 │
-├── app.py # Flask application
-├── vectorizer.pkl # Saved TF-IDF vectorizer
-├── model.pkl # Saved trained Naive Bayes model
+├── app.py              # Flask application
+├── vectorizer.pkl      # Saved TF-IDF vectorizer
+├── model.pkl           # Trained Naive Bayes model
 ├── templates/
-│ └── index.html # Frontend HTML file
-├── requirements.txt # Python dependencies
-└── README.md # Project documentation
+│   └── index.html      # Frontend HTML file
+├── requirements.txt    # Python dependencies
+└── README.md           # Project documentation
 
 
