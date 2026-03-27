@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SpamShield — Email Spam Detector</title>
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --bg: #080a0e;
+            --surface: #0f1117;
+            --surface-2: #161a22;
+            --border: rgba(255,255,255,0.06);
+            --border-hover: rgba(255,255,255,0.12);
+            --text: #e2e5ee;
+            --text-muted: #5a6278;
+            --text-dim: #8b95aa;
+            --accent: #4f8ef7;
+            --accent-2: #7c6af5;
+            --spam: #f75c5c;
+            --spam-bg: rgba(247,92,92,0.08);
+            --spam-border: rgba(247,92,92,0.2);
+            --safe: #34d399;
+            --safe-bg: rgba(52,211,153,0.08);
+            --safe-border: rgba(52,211,153,0.2);
+        }
+
+        html { scroll-behavior: smooth; }
+
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 48px 20px 64px;
+            overflow-x: hidden;
+        }
+
+        /* Grid bg */
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-image:
+                linear-gradient(rgba(79,142,247,0.025) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(79,142,247,0.025) 1px, transparent 1px);
+            background-size: 44px 44px;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* Glow top-right */
+        body::after {
+            content: '';
+            position: fixed;
+            width: 500px; height: 500px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(79,142,247,0.06) 0%, transparent 70%);
+            top: -160px; right: -160px;
+            pointer-events: none; z-index: 0;
+        }
+
+        .orb {
+            position: fixed;
+            width: 380px; height: 380px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(124,106,245,0.05) 0%, transparent 70%);
+            bottom: -120px; left: -100px;
+            pointer-events: none; z-index: 0;
+        }
+
+        .wrapper {
+            position: relative;
+            z-index: 1;
+            width: 100%;
+            max-width: 640px;
+        }
+
+        /* ── Header ── */
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            animation: fadeUp 0.55s ease both;
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            background: rgba(79,142,247,0.08);
+            border: 1px solid rgba(79,142,247,0.22);
+            color: var(--accent);
+            font-size: 10.5px;
+            font-weight: 600;
+            letter-spacing: 0.13em;
+            text-transform: uppercase;
+            padding: 5px 14px;
+            border-radius: 100px;
+            margin-bottom: 18px;
+        }
+
+        .badge-dot {
+            width: 6px; height: 6px;
+            background: var(--accent);
+            border-radius: 50%;
+            box-shadow: 0 0 7px var(--accent);
+            animation: blink 2.2s ease infinite;
+        }
+
+        h1 {
+            font-family: 'Syne', sans-serif;
+            font-size: clamp(2rem, 5.5vw, 2.9rem);
+            font-weight: 800;
+            letter-spacing: -0.025em;
+            line-height: 1.1;
+            background: linear-gradient(135deg, #dde1ee 0%, #7b8499 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        h1 em {
+            font-style: normal;
+            background: linear-gradient(135deg, var(--accent) 0%, var(--accent-2) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .subtitle {
+            margin-top: 9px;
+            color: var(--text-muted);
+            font-size: 14.5px;
+            font-weight: 300;
+        }
+
+        /* ── Input Card ── */
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            padding: 28px 28px 24px;
+            animation: fadeUp 0.55s ease 0.08s both;
+            transition: border-color 0.3s;
+        }
+        .card:hover { border-color: var(--border-hover); }
+
+        .field-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .field-label {
+            font-family: 'Syne', sans-serif;
+            font-size: 11.5px;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: var(--text-dim);
+        }
+
+        .char-count {
+            font-size: 11.5px;
+            color: var(--text-muted);
+        }
+
+        textarea {
+            width: 100%;
+            padding: 16px 18px;
+            background: var(--surface-2);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            color: var(--text);
+            font-family: 'DM Sans', sans-serif;
+            font-size: 14px;
+            font-weight: 300;
+            line-height: 1.75;
+            resize: vertical;
+            min-height: 175px;
+            outline: none;
+            transition: border-color 0.22s, box-shadow 0.22s;
+        }
+
+        textarea::placeholder { color: var(--text-muted); }
+
+        textarea:focus {
+            border-color: rgba(79,142,247,0.38);
+            box-shadow: 0 0 0 3px rgba(79,142,247,0.07);
+        }
+
+        /* ── Actions ── */
+        .actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 18px;
+        }
+
+        .btn-submit {
+            flex: 1;
+            background: linear-gradient(135deg, var(--accent), var(--accent-2));
+            color: #fff;
+            border: none;
+            border-radius: 10px;
+            padding: 13px 20px;
+            font-family: 'Syne', sans-serif;
+            font-size: 13.5px;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 7px;
+            transition: transform 0.18s, box-shadow 0.18s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-submit::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, rgba(255,255,255,0.08), transparent);
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .btn-submit:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 8px 22px rgba(79,142,247,0.32);
+        }
+
+        .btn-submit:hover::after { opacity: 1; }
+        .btn-submit:active { transform: translateY(0); }
+
+        .btn-clear {
+            background: var(--surface-2);
+            color: var(--text-muted);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 13px 16px;
+            font-family: 'Syne', sans-serif;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: border-color 0.2s, color 0.2s;
+        }
+
+        .btn-clear:hover { border-color: var(--border-hover); color: var(--text); }
+
+        /* ── Result ── */
+        .result-wrapper {
+            margin-top: 20px;
+            animation: fadeUp 0.45s ease both;
+        }
+
+        .result-card {
+            border-radius: 16px;
+            padding: 26px 26px 22px;
+            border: 1px solid;
+        }
+
+        .result-card.spam {
+            background: var(--spam-bg);
+            border-color: var(--spam-border);
+        }
+
+        .result-card.not-spam {
+            background: var(--safe-bg);
+            border-color: var(--safe-border);
+        }
+
+        .result-top {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .result-icon {
+            width: 48px; height: 48px;
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            flex-shrink: 0;
+        }
+
+        .result-icon.spam  { background: rgba(247,92,92,0.12); }
+        .result-icon.not-spam { background: rgba(52,211,153,0.12); }
+
+        .result-meta { flex: 1; }
+
+        .result-label {
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+        }
+
+        .result-verdict {
+            font-family: 'Syne', sans-serif;
+            font-size: 24px;
+            font-weight: 800;
+            letter-spacing: -0.01em;
+        }
+
+        .result-verdict.spam    { color: var(--spam); }
+        .result-verdict.not-spam { color: var(--safe); }
+
+        .result-divider {
+            height: 1px;
+            background: var(--border);
+            margin: 18px 0;
+        }
+
+        .analyzed-label {
+            font-size: 10.5px;
+            font-weight: 600;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+        }
+
+        .analyzed-text {
+            font-size: 13.5px;
+            font-weight: 300;
+            color: var(--text-dim);
+            line-height: 1.65;
+            word-break: break-word;
+            display: -webkit-box;
+            -webkit-line-clamp: 4;
+            -webkit-box-orient: vertical;
+            text-overflow: ellipsis;
+            overflow: hidden;
+        }
+
+        /* ── Model Info Footer ── */
+        .model-info {
+            margin-top: 28px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 18px 22px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            flex-wrap: wrap;
+            animation: fadeUp 0.55s ease 0.15s both;
+        }
+
+        .model-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .model-icon {
+            width: 36px; height: 36px;
+            background: rgba(79,142,247,0.1);
+            border: 1px solid rgba(79,142,247,0.18);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+        }
+
+        .model-name {
+            font-family: 'Syne', sans-serif;
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--text);
+        }
+
+        .model-sub {
+            font-size: 11.5px;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        .model-stats {
+            display: flex;
+            gap: 18px;
+        }
+
+        .stat {
+            text-align: right;
+        }
+
+        .stat-val {
+            font-family: 'Syne', sans-serif;
+            font-size: 15px;
+            font-weight: 700;
+            color: var(--text);
+        }
+
+        .stat-lbl {
+            font-size: 10.5px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.07em;
+            margin-top: 2px;
+        }
+
+        /* ── Stack Tags ── */
+        .stack-row {
+            margin-top: 16px;
+            display: flex;
+            justify-content: center;
+            gap: 7px;
+            flex-wrap: wrap;
+            animation: fadeUp 0.55s ease 0.2s both;
+        }
+
+        .tag {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+            font-size: 11px;
+            font-weight: 500;
+            padding: 4px 11px;
+            border-radius: 100px;
+            letter-spacing: 0.03em;
+        }
+
+        /* ── Animations ── */
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(14px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50%       { opacity: 0.35; }
+        }
+
+        /* ── Responsive ── */
+        @media (max-width: 480px) {
+            .card { padding: 20px 16px; }
+            .actions { flex-direction: column; }
+            .model-info { flex-direction: column; align-items: flex-start; }
+            .model-stats { gap: 14px; }
+            .stat { text-align: left; }
+        }
+    </style>
+</head>
+<body>
+    <div class="orb"></div>
+
+    <div class="wrapper">
+
+        <!-- Header -->
+        <div class="header">
+            <div class="badge">
+                <span class="badge-dot"></span>
+                Multinomial Naive Bayes
+            </div>
+            <h1>Spam<em>Shield</em></h1>
+            <p class="subtitle">Paste any email and let the model decide — Spam or Not Spam.</p>
+        </div>
+
+        <!-- Input Card -->
+        <div class="card">
+            <div class="field-header">
+                <span class="field-label">Email Content</span>
+                <span class="char-count" id="charCount">0 chars</span>
+            </div>
+
+            <form method="POST" action="/predict" id="spamForm">
+                <textarea
+                    name="email_text"
+                    id="emailInput"
+                    rows="8"
+                    placeholder="Paste the email content here..."
+                    oninput="document.getElementById('charCount').textContent = this.value.length + ' chars'"
+                    required
+                >{{ message if message else '' }}</textarea>
+
+                <div class="actions">
+                    <button type="submit" class="btn-submit">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
+                             stroke="currentColor" stroke-width="2.5"
+                             stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="11" cy="11" r="8"/>
+                            <path d="m21 21-4.35-4.35"/>
+                        </svg>
+                        Detect Spam
+                    </button>
+                    <button type="button" class="btn-clear" onclick="clearForm()">Clear</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Result — only rendered when Flask sends prediction -->
+        {% if prediction %}
+        <div class="result-wrapper">
+            <div class="result-card {{ 'spam' if prediction == 'Spam' else 'not-spam' }}">
+                <div class="result-top">
+                    <div class="result-icon {{ 'spam' if prediction == 'Spam' else 'not-spam' }}">
+                        {{ '⚠️' if prediction == 'Spam' else '✅' }}
+                    </div>
+                    <div class="result-meta">
+                        <div class="result-label">Model Prediction</div>
+                        <div class="result-verdict {{ 'spam' if prediction == 'Spam' else 'not-spam' }}">
+                            {{ prediction }}
+                        </div>
+                    </div>
+                </div>
+
+                {% if message %}
+                <div class="result-divider"></div>
+                <div class="analyzed-label">Analyzed Content</div>
+                <div class="analyzed-text">{{ message }}</div>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Model Info -->
+        <div class="model-info">
+            <div class="model-left">
+                <div class="model-icon">🧠</div>
+                <div>
+                    <div class="model-name">Multinomial Naive Bayes</div>
+                    <div class="model-sub">TF-IDF + NLTK Preprocessing</div>
+                </div>
+            </div>
+            
+        </div>
+
+        <!-- Stack Tags -->
+        <div class="stack-row">
+            <span class="tag">Python</span>
+            <span class="tag">Flask</span>
+            <span class="tag">Scikit-learn</span>
+            <span class="tag">NLTK</span>
+            <span class="tag">TF-IDF Vectorizer</span>
+            <span class="tag">Porter Stemmer</span>
+        </div>
+
+    </div>
+
+    <script>
+        // Restore char count if page reloads with prefilled text (after POST)
+        window.addEventListener('DOMContentLoaded', () => {
+            const ta = document.getElementById('emailInput');
+            document.getElementById('charCount').textContent = ta.value.length + ' chars';
+
+            // Scroll to result smoothly if it exists
+            const result = document.querySelector('.result-wrapper');
+            if (result) {
+                setTimeout(() => result.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 200);
+            }
+        });
+
+        function clearForm() {
+            document.getElementById('emailInput').value = '';
+            document.getElementById('charCount').textContent = '0 chars';
+            document.getElementById('emailInput').focus();
+        }
+    </script>
+</body>
+</html>
